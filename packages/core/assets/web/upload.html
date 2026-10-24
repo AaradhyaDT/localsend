@@ -402,5 +402,29 @@
 
     init();
 </script>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const origSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.send = function() {
+        if (this.upload) {
+          this.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              const pBar = document.getElementById('upload-progress-bar');
+              const pCont = document.getElementById('upload-progress-container');
+              const pText = document.getElementById('upload-progress-text');
+              if (pCont) pCont.style.display = 'block';
+              if (pBar) pBar.style.width = pct + '%';
+              if (pText) {
+                pText.style.display = 'block';
+                pText.innerText = pct + '% (' + (e.loaded / 1048576).toFixed(1) + ' MB / ' + (e.total / 1048576).toFixed(1) + ' MB)';
+              }
+            }
+          });
+        }
+        return origSend.apply(this, arguments);
+      };
+    });
+  </script>
 </body>
 </html>

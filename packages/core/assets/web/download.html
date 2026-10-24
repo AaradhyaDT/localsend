@@ -91,6 +91,7 @@
 
 <h1 style="padding: 0.5em">LocalSend</h1>
 <p id="status-text"></p>
+<div style="margin: 1.5em 0;"><button id="download-all-btn" style="padding: 0.7em 1.8em; font-size: 1.1em; background: #00796B; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">Download All</button></div>
 <div id="file-list"></div>
 <div id="single-file"></div>
 
@@ -273,6 +274,21 @@
     }
 
     init();
+</script>
+<script>
+  document.getElementById('download-all-btn')?.addEventListener('click', () => {
+    const links = document.querySelectorAll('#file-list a');
+    links.forEach((a, i) => {
+      setTimeout(() => {
+        const trigger = document.createElement('a');
+        trigger.href = a.href;
+        trigger.download = a.innerText.trim();
+        document.body.appendChild(trigger);
+        trigger.click();
+        document.body.removeChild(trigger);
+      }, i * 400);
+    });
+  });
 </script>
 </body>
 </html>

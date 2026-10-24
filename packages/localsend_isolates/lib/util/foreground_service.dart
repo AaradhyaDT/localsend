@@ -34,6 +34,36 @@ class ForegroundService {
   /// Whether the service is currently keeping the process alive.
   static bool get isRunning => _running;
 
+  static bool _standby = false;
+
+  /// Whether the service is currently running in standby idle mode.
+  static bool get isStandby => _standby;
+
+  /// Keeps the service running in standby mode (e.g. Quick Save / AirDrop readiness)
+  /// so that incoming connections are never blocked by Android background execution limits.
+  static void setStandby({
+    required bool enabled,
+    required String channelName,
+    required String title,
+    required String text,
+  }) {
+    if (!_isSupported) {
+      return;
+    }
+
+    _standby = enabled;
+    if (enabled) {
+      if (!_running) {
+        start(channelName: channelName, title: title, text: text);
+      }
+    } else {
+      if (_running) {
+        stop();
+      }
+    }
+  }
+
+
   /// Whether [updateNotification] would actually forward an update right now.
   /// Lets callers skip building a text that gets throttled away anyway.
   static bool get shouldUpdateNotification {

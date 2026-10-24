@@ -1,3 +1,6 @@
+import 'package:localsend_app/util/native/channel/android_channel.dart';
+import 'package:localsend_app/util/native/platform_check.dart';
+import 'package:localsend_isolates/util/transfer_notification.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -222,6 +225,12 @@ class ServerService extends Notifier<ServerState?> {
     );
 
     state = newServerState;
+    if (checkPlatform([TargetPlatform.android])) {
+      setMulticastLockAndroid(true);
+      if (settings.quickSave || settings.quickSaveFromFavorites) {
+        TransferNotification.setStandby(true);
+      }
+    }
     _logger.info('Server started. (Port: $port, ${https ? 'HTTPS' : 'HTTP'} only)');
     return newServerState;
   }
@@ -232,6 +241,10 @@ class ServerService extends Notifier<ServerState?> {
     _subscription = null;
     await ref.redux(parentIsolateProvider).dispatchAsync(IsolateHttpServerStopAction());
     state = null;
+    if (checkPlatform([TargetPlatform.android])) {
+      setMulticastLockAndroid(false);
+      TransferNotification.setStandby(false);
+    }
     _logger.info('Server stopped.');
   }
 

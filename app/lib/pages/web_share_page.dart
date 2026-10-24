@@ -1,3 +1,4 @@
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:localsend_app/config/theme.dart';
@@ -191,6 +192,25 @@ class _WebSharePageState extends State<WebSharePage> with Refena {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (networkState.localIps.isNotEmpty)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: SizedBox(
+                                width: 140,
+                                height: 140,
+                                child: PrettyQrView.data(
+                                  data: '${_encrypted ? "https" : "http"}://${networkState.localIps.first}:${serverState.port}${pin != null ? "/?pin=${Uri.encodeQueryComponent(pin)}" : ""}',
+                                  decoration: PrettyQrDecoration(
+                                    shape: PrettyQrSmoothSymbol(
+                                      roundFactor: 0,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ...networkState.localIps.map((ip) {
                           final url = '${_encrypted ? 'https' : 'http'}://$ip:${serverState.port}';
                           final urlWithPin = switch (pin) {

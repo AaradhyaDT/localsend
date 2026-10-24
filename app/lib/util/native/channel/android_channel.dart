@@ -83,6 +83,34 @@ Future<void> flushPendingShareIntentsAndroid() async {
   }
 }
 
+/// Enables or disables the Wi-Fi MulticastLock and WifiLock for background discoverability.
+Future<void> setMulticastLockAndroid(bool enable) async {
+  try {
+    await _methodChannel.invokeMethod('setMulticastLock', {'enable': enable});
+  } catch (e) {
+    _logger.warning('Could not set multicast lock', e);
+  }
+}
+
+/// Updates Android dynamic shortcuts with the top favorite/nearby devices for 1-tap Direct Share.
+Future<void> updateDirectShareTargetsAndroid(List<Map<String, dynamic>> targets) async {
+  try {
+    await _methodChannel.invokeMethod('updateDirectShareTargets', {'targets': targets});
+  } catch (e) {
+    _logger.warning('Could not update direct share targets', e);
+  }
+}
+
+/// Consumes any pending Direct Share target ID (device fingerprint/IP) selected from the Android share sheet.
+Future<String?> consumePendingDirectShareTargetAndroid() async {
+  try {
+    return await _methodChannel.invokeMethod<String>('consumePendingDirectShareTarget');
+  } catch (e) {
+    _logger.warning('Could not consume direct share target', e);
+    return null;
+  }
+}
+
 Future<void> openGallery() async {
   _logger.info('Opening gallery');
   await _methodChannel.invokeMethod('openGallery');

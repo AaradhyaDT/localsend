@@ -40,12 +40,14 @@ jobs:
           cp -r . $APK_BUILD_DIR
 
       - name: Decode key.properties file
+        if: env.ENCODED_STRING != ''
         working-directory: ${{ env.APK_BUILD_DIR }}
         env:
           ENCODED_STRING: ${{ secrets.ANDROID_KEY_PROPERTIES }}
         run: echo $ENCODED_STRING | base64 -di > app/android/key.properties
 
       - name: Decode android-keystore.jks file
+        if: env.ENCODED_STRING != ''
         working-directory: ${{ env.APK_BUILD_DIR }}
         env:
           ENCODED_STRING: ${{ secrets.ANDROID_KEY_STORE }}

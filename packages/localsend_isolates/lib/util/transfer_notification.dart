@@ -14,6 +14,31 @@ const _minBytesForSpeed = 500 * 1024;
 /// reference counted here - it starts with the first transfer, ends with the last one, and the
 /// notification shows the sum of everything in flight.
 class TransferNotification {
+
+  static bool _standbyMode = false;
+
+  /// Configures whether background standby mode is enabled.
+  static void setStandby(bool enabled) {
+    _standbyMode = enabled;
+    if (_transfers.isEmpty) {
+      if (enabled) {
+        ForegroundService.setStandby(
+          enabled: true,
+          channelName: _requiredStrings.titleReceiving,
+          title: 'LocalSend',
+          text: 'AirDrop Standby · Ready to receive',
+        );
+      } else {
+        ForegroundService.setStandby(
+          enabled: false,
+          channelName: _requiredStrings.titleReceiving,
+          title: '',
+          text: '',
+        );
+      }
+    }
+  }
+
   TransferNotification._();
 
   static final _transfers = <String, _Transfer>{};

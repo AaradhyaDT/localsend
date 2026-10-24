@@ -13,6 +13,11 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.Settings
 import android.webkit.MimeTypeMap
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
+import android.net.wifi.WifiManager
+
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -34,6 +39,17 @@ private const val PERMISSION_ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_L
 private const val API_LEVEL_ANDROID_17 = 37
 
 class MainActivity : FlutterActivity() {
+    private var multicastLock: WifiManager.MulticastLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var pendingDirectShareShortcutId: String? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (intent?.hasExtra(Intent.EXTRA_SHORTCUT_ID) == true) {
+            pendingDirectShareShortcutId = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
+        }
+    }
+
     private var pendingResult: MethodChannel.Result? = null
     private var pendingPermissionResult: MethodChannel.Result? = null
 
@@ -46,6 +62,10 @@ class MainActivity : FlutterActivity() {
     private var shareIntentReady = false
 
     override fun onNewIntent(intent: Intent) {
+        if (intent.hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+            pendingDirectShareShortcutId = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
+        }
+
         if (!shareIntentReady && (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE)) {
             pendingShareIntents.add(intent)
             return
@@ -125,6 +145,24 @@ class MainActivity : FlutterActivity() {
 
                 "getDownloadsDirectory" -> {
                     result.success(getDownloadsDirectory())
+                }
+
+                "setMulticastLock" -> {
+                    val enable = call.argument<Boolean>("enable") ?: true
+                    setMulticastLock(enable)
+                    result.success(true)
+                }
+
+                "updateDirectShareTargets" -> {
+                    val targets = call.argument<List<Map<String, Any>>>("targets") ?: emptyList()
+                    updateDirectShareTargets(targets)
+                    result.success(true)
+                }
+
+                "consumePendingDirectShareTarget" -> {
+                    val targetId = pendingDirectShareShortcutId
+                    pendingDirectShareShortcutId = null
+                    result.success(targetId)
                 }
 
                 "requestLocalNetworkPermission" -> {
@@ -486,6 +524,82 @@ class MainActivity : FlutterActivity() {
             cursor?.close()
         }
         return false
+    }
+
+    private fun setMulticastLock(enable: Boolean) {
+        try {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            if (enable) {
+                if (multicastLock == null || multicastLock?.isHeld == false) {
+                    multicastLock = wifiManager?.createMulticastLock("localsend_multicast_lock")?.apply {
+                        setReferenceCounted(true)
+                        acquire()
+                    }
+                }
+                if (wifiLock == null || wifiLock?.isHeld == false) {
+                    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                    } else {
+                        @Suppress("DEPRECATION")
+                        WifiManager.WIFI_MODE_FULL_HIGH_PERF
+                    }
+                    wifiLock = wifiManager?.createWifiLock(mode, "localsend_wifi_lock")?.apply {
+                        setReferenceCounted(true)
+                        acquire()
+                    }
+                }
+            } else {
+                if (multicastLock?.isHeld == true) {
+                    multicastLock?.release()
+                }
+                multicastLock = null
+                if (wifiLock?.isHeld == true) {
+                    wifiLock?.release()
+                }
+                wifiLock = null
+            }
+        } catch (e: Exception) {
+            // Ignore lock errors on unsupported devices
+        }
+    }
+
+    private fun updateDirectShareTargets(targets: List<Map<String, Any>>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val shortcutManager = getSystemService(ShortcutManager::class.java) ?: return
+        try {
+            val shortcuts = targets.take(4).mapIndexedNotNull { index, target ->
+                val id = target["id"] as? String ?: return@mapIndexedNotNull null
+                val alias = target["alias"] as? String ?: id
+                val ip = target["ip"] as? String ?: ""
+                val port = (target["port"] as? Number)?.toInt() ?: 53317
+
+                val targetIntent = createDefaultIntent(this).apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_SHORTCUT_ID, id)
+                    putExtra("target_ip", ip)
+                    putExtra("target_port", port)
+                    putExtra("target_alias", alias)
+                }
+
+                ShortcutInfo.Builder(this, id)
+                    .setShortLabel(alias)
+                    .setLongLabel("$alias ($ip)")
+                    .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+                    .setIntent(targetIntent)
+                    .setCategories(setOf("org.localsend.localsend_app.category.DIRECT_SHARE_TARGET"))
+                    .setLongLived(true)
+                    .setRank(index)
+                    .build()
+            }
+            shortcutManager.dynamicShortcuts = shortcuts
+        } catch (e: Exception) {
+            // ShortcutManager failure on custom vendor skins
+        }
+    }
+
+    override fun onDestroy() {
+        setMulticastLock(false)
+        super.onDestroy()
     }
 
     private fun openGallery() {
