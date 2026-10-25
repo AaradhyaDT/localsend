@@ -71,9 +71,6 @@ class LocalSendApp extends StatelessWidget {
                 if (checkPlatform([TargetPlatform.iOS, TargetPlatform.android])) {
                   // Sockets die silently on mobile suspend/resume, so always rebind them on wake.
                   ref.redux(parentIsolateProvider).dispatch(IsolateDiscoveryRestartAction());
-                  if (checkPlatform([TargetPlatform.android])) {
-                    ref.redux(parentIsolateProvider).dispatch(StartMulticastScan());
-                  }
                 }
                 break;
               case AppLifecycleState.detached:
