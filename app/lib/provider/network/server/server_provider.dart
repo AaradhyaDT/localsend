@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:localsend_app/util/native/channel/android_channel.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
 import 'package:localsend_isolates/util/transfer_notification.dart';
