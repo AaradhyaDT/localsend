@@ -142,13 +142,17 @@ class ReceiveController {
     if (quickSave) {
       // Push before accepting: the permission request in [acceptFileRequest] may block for a while.
       // ignore: use_build_context_synchronously, unawaited_futures
-      Routerino.context.pushImmediately(
-        () => ProgressPage(
-          showAppBar: false,
-          closeSessionOnClose: true,
-          sessionId: sessionId,
-        ),
-      );
+      try {
+        Routerino.context.pushImmediately(
+          () => ProgressPage(
+            showAppBar: false,
+            closeSessionOnClose: true,
+            sessionId: sessionId,
+          ),
+        );
+      } catch (e) {
+        _logger.warning('Could not push progress page (app in background): $e');
+      }
 
       // accept all files
       await acceptFileRequest({
@@ -231,7 +235,11 @@ class ReceiveController {
     server.ref.notifier(selectedReceivingFilesProvider).setFiles(files.values.toList());
 
     // ignore: use_build_context_synchronously, unawaited_futures
-    Routerino.context.push(() => ReceivePage(receiveProvider));
+    try {
+      Routerino.context.push(() => ReceivePage(receiveProvider));
+    } catch (e) {
+      _logger.warning('Could not push receive page: $e');
+    }
   }
 
   /// An accepted file started being uploaded.
@@ -579,10 +587,13 @@ class ReceiveController {
     final androidSdkInt = server.ref.read(deviceInfoProvider).androidSdkInt;
     if (checkPlatform([TargetPlatform.android]) && androidSdkInt != null && androidSdkInt < 33) {
       try {
-        final result = await Permission.storage.request();
-        _logger.info('storage permission: $result');
+        final status = await Permission.storage.status;
+        if (!status.isGranted) {
+          final result = await Permission.storage.request().timeout(const Duration(milliseconds: 1500));
+          _logger.info('storage permission: $result');
+        }
       } catch (e) {
-        _logger.warning('Could not request storage permission', e);
+        _logger.warning('Could not request storage permission: $e');
       }
     }
 
